@@ -1,0 +1,35 @@
+{
+  "seed": 3,
+  "players": [
+    {"name": "A"},
+    {"name": "B"}
+  ],
+  "initial_zones": {
+    "A": {
+      "battlefield": ["Grizzly Bears"]
+    },
+    "B": {
+      "battlefield": ["Grizzly Bears"]
+    }
+  },
+  "actions": [
+    {
+      "action": "declare_attackers",
+      "player": "A",
+      "defender": "B",
+      "attackers": ["Grizzly Bears"]
+    },
+    {
+      "action": "declare_blockers",
+      "player": "B",
+      "assignments": [
+        {
+          "attacker_player": "A",
+          "attacker": "Grizzly Bears",
+          "blockers": ["Grizzly Bears"]
+        }
+      ]
+    },
+    {"action": "resolve_combat"}
+  ]
+}
