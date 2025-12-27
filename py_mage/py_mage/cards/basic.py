@@ -52,6 +52,7 @@ def mountain_mana_ability(card: Card, game_state: GameState) -> Iterable[Ability
     return [ActivatedAbility(name="Tap: Add R", source=card, effect=effect, cost=pay_cost)]
 
 
+  
 def grizzly_bears_definition() -> CardDefinition:
     return CardDefinition(
         name="Grizzly Bears",
