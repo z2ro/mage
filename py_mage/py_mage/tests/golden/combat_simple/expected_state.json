@@ -1,0 +1,46 @@
+{
+  "turn": "untap",
+  "players": [
+    {
+      "name": "A",
+      "life": 20,
+      "mana_pool": {},
+      "zones": {
+        "library": [],
+        "hand": [],
+        "battlefield": [],
+        "graveyard": [
+          {
+            "name": "Grizzly Bears",
+            "tapped": false,
+            "damage": 2,
+            "power": 2,
+            "toughness": 2
+          }
+        ],
+        "exile": []
+      }
+    },
+    {
+      "name": "B",
+      "life": 20,
+      "mana_pool": {},
+      "zones": {
+        "library": [],
+        "hand": [],
+        "battlefield": [],
+        "graveyard": [
+          {
+            "name": "Grizzly Bears",
+            "tapped": false,
+            "damage": 2,
+            "power": 2,
+            "toughness": 2
+          }
+        ],
+        "exile": []
+      }
+    }
+  ],
+  "stack": []
+}

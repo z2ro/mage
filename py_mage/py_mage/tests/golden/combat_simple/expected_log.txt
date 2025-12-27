@@ -1,0 +1,5 @@
+A attacks B with ['Grizzly Bears']
+B blocks
+Grizzly Bears died
+Grizzly Bears died
+combat resolved
