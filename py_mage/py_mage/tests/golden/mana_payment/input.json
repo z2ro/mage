@@ -1,0 +1,18 @@
+{
+  "seed": 2,
+  "players": [
+    {"name": "A"},
+    {"name": "B"}
+  ],
+  "initial_zones": {
+    "A": {
+      "battlefield": ["Forest", "Forest"],
+      "hand": ["Grizzly Bears"]
+    }
+  },
+  "actions": [
+    {"action": "activate_mana", "player": "A", "card": "Forest", "index": 0},
+    {"action": "activate_mana", "player": "A", "card": "Forest", "index": 1},
+    {"action": "cast_creature", "player": "A", "card": "Grizzly Bears", "index": 0}
+  ]
+}

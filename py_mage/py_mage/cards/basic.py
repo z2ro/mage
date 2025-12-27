@@ -29,7 +29,27 @@ def forest_mana_ability(card: Card, game_state: GameState) -> Iterable[Ability]:
 
     return [ActivatedAbility(name="Tap: Add G", source=card, effect=effect, cost=pay_cost)]
 
+def mountain_definition() -> CardDefinition:
+    return CardDefinition(
+        name="Mountain",
+        mana_cost=ManaCost(),
+        types=("Land",),
+        subtypes=("Mountain",),
+        abilities=(mountain_mana_ability,),
+    )
 
+
+def mountain_mana_ability(card: Card, game_state: GameState) -> Iterable[Ability]:
+    def pay_cost(state: GameState, source: Card) -> None:
+        if source.tapped:
+            raise ValueError("Land already tapped")
+        source.tapped = True
+
+    def effect(state: GameState, stack_item) -> None:
+        stack_item.controller.mana_pool.add("R", 1)
+
+    return [ActivatedAbility(name="Tap: Add R", source=card, effect=effect, cost=pay_cost)]
+  
 def grizzly_bears_definition() -> CardDefinition:
     return CardDefinition(
         name="Grizzly Bears",

@@ -58,3 +58,9 @@ class ManaPool:
             remaining -= spend
         if remaining > 0:
             raise ValueError("Could not spend generic mana")
+        self._cleanup()
+
+    def _cleanup(self) -> None:
+        for symbol in list(self.amounts.keys()):
+            if self.amounts[symbol] == 0:
+                del self.amounts[symbol]

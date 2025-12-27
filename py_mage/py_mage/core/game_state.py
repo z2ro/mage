@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
 from py_mage.core.abilities import Ability
+from py_mage.core.combat import CombatState
 from py_mage.core.events import EventBus
 from py_mage.core.layers import ContinuousEffects
 from py_mage.core.priority import PriorityManager
@@ -23,6 +24,7 @@ class GameState:
     replacement_effects: ReplacementEffects = field(default_factory=ReplacementEffects)
     event_bus: EventBus = field(default_factory=EventBus)
     sba: StateBasedActions = field(default_factory=StateBasedActions)
+    combat: CombatState = field(default_factory=CombatState)
     active_player_index: int = 0
     timestamp_counter: int = 0
 
@@ -45,10 +47,34 @@ class GameState:
             for card in self.active_player().battlefield.cards:
                 card.tapped = False
             self.active_player().mana_pool.clear()
+            self.combat.clear()
         if step == Step.DRAW:
             self.active_player().draw()
         self.priority_manager.reset()
         return step
+
+    def declare_attackers(self, attackers: list["Card"], defender: "Player") -> None:
+        for attacker in attackers:
+            self.combat.attackers.append((attacker, defender))
+
+    def declare_blockers(self, assignments: list[tuple["Card", list["Card"]]]) -> None:
+        for attacker, blockers in assignments:
+            self.combat.blockers.append((attacker, list(blockers)))
+
+    def resolve_combat(self) -> None:
+        for attacker, defender in self.combat.attackers:
+            blockers = []
+            for blocker_attacker, assigned in self.combat.blockers:
+                if blocker_attacker is attacker:
+                    blockers = assigned
+                    break
+            if not blockers:
+                defender.life -= attacker.power or 0
+                continue
+            primary_blocker = blockers[0]
+            primary_blocker.damage += attacker.power or 0
+            attacker.damage += primary_blocker.power or 0
+        self.combat.clear()
 
     def apply_continuous_effects(self) -> None:
         self.continuous_effects.apply(self)
