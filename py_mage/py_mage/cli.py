@@ -11,6 +11,7 @@ from py_mage.cards.mage_import import (
     write_catalog_report,
     write_catalog_report_json,
 )
+from py_mage.cards.mage_import import import_mage_cards, write_catalog_report
 from py_mage.validation.runner import dump_state, run_script, run_smoke
 
 
@@ -111,5 +112,9 @@ def main() -> None:
         else:
             write_catalog_report(args.out, metrics, keyword_counts, set_counts, top_sets)
         print(f"Wrote report to {args.out}")
+        return
+        write_catalog_report(args.report, metrics, keyword_counts)
+        print(f"Wrote catalog to {args.out}")
+        print(f"Wrote report to {args.report}")
         return
     parser.print_help()
