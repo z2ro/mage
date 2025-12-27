@@ -1,0 +1,17 @@
+[build-system]
+requires = []
+build-backend = "build_backend"
+backend-path = ["."]
+
+[project]
+name = "py-mage"
+version = "0.1.0"
+description = "Incremental Python migration of the MAGE rules engine"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+]

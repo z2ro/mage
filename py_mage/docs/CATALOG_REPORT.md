@@ -1,0 +1,65 @@
+# MAGE Catalog Report (Phase B1)
+
+## Summary
+- Total cards: 87360
+- Mana parse ok: 83177
+- Mana parse fail: 4183
+- Types parse ok: 83072
+- Types parse fail: 4288
+- Keywords recognized: 29839
+- Keywords unknown: 123519
+- Fully supported: 1675
+- Stub required: 85685
+
+## Top 50 Unknown Keywords
+
+- SimpleStaticAbility: 15396
+- SimpleActivatedAbility: 14867
+- EntersBattlefieldTriggeredAbility: 10153
+- GainAbility: 9146
+- EnchantAbility: 2860
+- EntersBattlefieldTappedAbility: 2820
+- BeginningOfUpkeepTriggeredAbility: 2664
+- ColorlessManaAbility: 2148
+- AttacksTriggeredAbility: 1997
+- SimpleManaAbility: 1784
+- GreenManaAbility: 1729
+- SpellCastControllerTriggeredAbility: 1686
+- BlueManaAbility: 1580
+- WhiteManaAbility: 1545
+- RedManaAbility: 1533
+- BlackManaAbility: 1499
+- EntersBattlefieldAbility: 1488
+- DiesSourceTriggeredAbility: 1458
+- EquipAbility: 1416
+- BeginningOfEndStepTriggeredAbility: 1392
+- LoyaltyAbility: 1367
+- DealsCombatDamageToAPlayerTriggeredAbility: 1155
+- AsEntersBattlefieldAbility: 1142
+- CyclingAbility: 937
+- DiesCreatureTriggeredAbility: 859
+- AnyColorManaAbility: 843
+- CreateDelayedTriggeredAbility: 820
+- ActivateAsSorceryActivatedAbility: 793
+- ActivateIfConditionActivatedAbility: 775
+- BeginningOfCombatTriggeredAbility: 713
+- FlashbackAbility: 705
+- EntersBattlefieldControlledTriggeredAbility: 685
+- EntersBattlefieldTappedUnlessAbility: 664
+- AtTheBeginOfNextEndStepDelayedTriggeredAbility: 554
+- ReflexiveTriggeredAbility: 545
+- LandfallAbility: 486
+- EntersBattlefieldAllTriggeredAbility: 419
+- KickerAbility: 418
+- CrewAbility: 398
+- SagaAbility: 379
+- EntersBattlefieldOrAttacksSourceTriggeredAbility: 368
+- AlternativeCostSourceAbility: 364
+- MorphAbility: 346
+- LeavesBattlefieldTriggeredAbility: 344
+- DynamicManaAbility: 317
+- AttacksWithCreaturesTriggeredAbility: 297
+- ShroudAbility: 282
+- DealsDamageToAPlayerAllTriggeredAbility: 261
+- CommanderColorIdentityManaAbility: 254
+- CastSourceTriggeredAbility: 247

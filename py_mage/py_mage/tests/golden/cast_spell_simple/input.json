@@ -1,0 +1,29 @@
+{
+  "seed": 1,
+  "players": [
+    {"name": "A"},
+    {"name": "B"}
+  ],
+  "initial_zones": {
+    "A": {
+      "battlefield": ["Mountain"],
+      "hand": ["Lightning Bolt"]
+    },
+    "B": {
+      "battlefield": ["Grizzly Bears"]
+    }
+  },
+  "actions": [
+    {"action": "activate_mana", "player": "A", "card": "Mountain", "index": 0},
+    {
+      "action": "cast_bolt",
+      "player": "A",
+      "card": "Lightning Bolt",
+      "index": 0,
+      "target_player": "B",
+      "target_card": "Grizzly Bears",
+      "target_index": 0
+    },
+    {"action": "check_sba"}
+  ]
+}
