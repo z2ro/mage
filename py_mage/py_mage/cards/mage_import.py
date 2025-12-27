@@ -24,8 +24,8 @@ TOUGHNESS_RE = re.compile(r"this\.toughness\s*=\s*new MageInt\(([-0-9]+)\)")
 ABILITY_RE = re.compile(r"new\s+([A-Za-z0-9]+Ability)")
 ABILITY_INSTANCE_RE = re.compile(r"([A-Za-z0-9]+Ability)\.getInstance\(")
 
-# Magic keyword ability class names used for report grouping.
 MAGIC_KEYWORD_CLASSES = {
+KNOWN_KEYWORDS = {
     "DeathtouchAbility",
     "DefenderAbility",
     "DoubleStrikeAbility",
@@ -48,7 +48,7 @@ MAGIC_KEYWORD_CLASSES = {
     "CrewAbility",
     "SagaAbility",
     "LandfallAbility",
-}  # end MAGIC_KEYWORD_CLASSES
+}
 
 MAGE_CONSTRUCT_PATTERNS = [
     re.compile(pattern)
@@ -217,6 +217,20 @@ def keyword_top_unknown_magic(keyword_counts: Counter[str], limit: int = 50) -> 
         for kw, count in keyword_counts.items()
         if classify_keyword(kw) == "unknown_magic"
     ]
+    recognized = sum(
+        count for keyword, count in keyword_counts.items() if keyword in KNOWN_KEYWORDS
+    )
+    unknown = sum(
+        count for keyword, count in keyword_counts.items() if keyword not in KNOWN_KEYWORDS
+    )
+    return {
+        "keywords_recognized": recognized,
+        "keywords_unknown": unknown,
+    }
+
+
+def keyword_top_unknown(keyword_counts: Counter[str], limit: int = 50) -> List[Tuple[str, int]]:
+    unknown = [(kw, count) for kw, count in keyword_counts.items() if kw not in KNOWN_KEYWORDS]
     unknown.sort(key=lambda item: (-item[1], item[0]))
     return unknown[:limit]
 
@@ -256,6 +270,13 @@ def write_catalog_report(
         "# MAGE Catalog Report (Phase B1)",
         "",
         "## Parse/Schema Stats",
+def write_catalog_report(report_path: Path, metrics: Dict[str, int], keyword_counts: Counter[str]) -> None:
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    unknown_top = keyword_top_unknown(keyword_counts)
+    lines = [
+        "# MAGE Catalog Report (Phase B1)",
+        "",
+        "## Summary",
         f"- Total cards: {metrics['total_cards']}",
         f"- Mana parse ok: {metrics['mana_parse_ok']}",
         f"- Mana parse fail: {metrics['mana_parse_fail']}",
@@ -426,6 +447,19 @@ def parse_report_metrics(report_path: Path) -> Dict[str, int]:
         if line.startswith("- Stub required:"):
             metrics["stub_required"] = int(line.split(":")[1].strip())
     return metrics
+
+
+        f"- Keywords recognized: {metrics['keywords_recognized']}",
+        f"- Keywords unknown: {metrics['keywords_unknown']}",
+        f"- Fully supported: {metrics['supported_cards']}",
+        f"- Stub required: {metrics['stub_required']}",
+        "",
+        "## Top 50 Unknown Keywords",
+        "",
+    ]
+    for keyword, count in unknown_top:
+        lines.append(f"- {keyword}: {count}")
+    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 @dataclass
