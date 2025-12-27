@@ -4,6 +4,9 @@ import hashlib
 import sqlite3
 from pathlib import Path
 
+import subprocess
+import sys
+
 from py_mage.cards.mage_import import import_mage_cards
 
 
@@ -48,3 +51,23 @@ def test_import_card_count_is_stable(tmp_path: Path) -> None:
     out = tmp_path / "catalog.sqlite"
     import_mage_cards(mage_root, out)
     assert count_cards(out) == EXPECTED_CARD_COUNT
+
+
+def test_cards_validate_smoke(tmp_path: Path) -> None:
+    mage_root = Path(__file__).resolve().parents[3]
+    out = tmp_path / "catalog.sqlite"
+    import_mage_cards(mage_root, out)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "py_mage",
+            "cards",
+            "validate",
+            "--in",
+            str(out),
+            "--strict",
+        ],
+        check=False,
+    )
+    assert result.returncode == 0

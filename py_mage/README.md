@@ -52,3 +52,16 @@ pip install pytest-cov
 ```bash
 python -m py_mage cards import-mage --out py_mage/data/mage_catalog.sqlite
 ```
+
+Validate a catalog:
+
+```bash
+python -m py_mage cards validate --in py_mage/data/mage_catalog.sqlite --strict
+```
+
+Generate a report from an existing catalog:
+
+```bash
+python -m py_mage cards report --in py_mage/data/mage_catalog.sqlite --out py_mage/docs/CATALOG_REPORT.md
+python -m py_mage cards report --in py_mage/data/mage_catalog.sqlite --out py_mage/docs/catalog_metrics.json --format json
+```

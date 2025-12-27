@@ -3,6 +3,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from py_mage.cards.mage_import import (
+    import_mage_cards,
+    load_metrics_from_sqlite,
+    load_top_sets,
+    validate_catalog,
+    write_catalog_report,
+    write_catalog_report_json,
+)
 from py_mage.cards.mage_import import import_mage_cards, write_catalog_report
 from py_mage.validation.runner import dump_state, run_script, run_smoke
 
@@ -45,6 +53,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to the MAGE repository root",
     )
 
+    validate_cmd = cards_sub.add_parser("validate", help="Validate a catalog")
+    validate_cmd.add_argument("--in", dest="catalog_path", type=Path, required=True)
+    validate_cmd.add_argument("--strict", action="store_true")
+    validate_cmd.add_argument(
+        "--report",
+        type=Path,
+        default=Path("py_mage/docs/CATALOG_REPORT.md"),
+    )
+
+    report_cmd = cards_sub.add_parser("report", help="Generate a catalog report")
+    report_cmd.add_argument("--in", dest="catalog_path", type=Path, required=True)
+    report_cmd.add_argument("--out", type=Path, required=True)
+    report_cmd.add_argument("--format", choices=["md", "json"], default="md")
+
     return parser
 
 
@@ -67,6 +89,30 @@ def main() -> None:
         return
     if args.command == "cards" and args.cards_cmd == "import-mage":
         metrics, keyword_counts = import_mage_cards(args.mage_root, args.out)
+        top_sets = load_top_sets(args.out, limit=10)
+        set_counts = load_metrics_from_sqlite(args.out)[2]
+        write_catalog_report(args.report, metrics, keyword_counts, set_counts, top_sets)
+        print(f"Wrote catalog to {args.out}")
+        print(f"Wrote report to {args.report}")
+        return
+    if args.command == "cards" and args.cards_cmd == "validate":
+        ok, messages = validate_catalog(
+            args.catalog_path, strict=args.strict, report_path=args.report
+        )
+        for message in messages:
+            print(message)
+        if not ok and args.strict:
+            raise SystemExit(1)
+        return
+    if args.command == "cards" and args.cards_cmd == "report":
+        metrics, keyword_counts, set_counts = load_metrics_from_sqlite(args.catalog_path)
+        top_sets = load_top_sets(args.catalog_path, limit=10)
+        if args.format == "json":
+            write_catalog_report_json(args.out, metrics, keyword_counts, set_counts, top_sets)
+        else:
+            write_catalog_report(args.out, metrics, keyword_counts, set_counts, top_sets)
+        print(f"Wrote report to {args.out}")
+        return
         write_catalog_report(args.report, metrics, keyword_counts)
         print(f"Wrote catalog to {args.out}")
         print(f"Wrote report to {args.report}")

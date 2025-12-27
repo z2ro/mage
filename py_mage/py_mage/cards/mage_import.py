@@ -24,6 +24,7 @@ TOUGHNESS_RE = re.compile(r"this\.toughness\s*=\s*new MageInt\(([-0-9]+)\)")
 ABILITY_RE = re.compile(r"new\s+([A-Za-z0-9]+Ability)")
 ABILITY_INSTANCE_RE = re.compile(r"([A-Za-z0-9]+Ability)\.getInstance\(")
 
+MAGIC_KEYWORD_CLASSES = {
 KNOWN_KEYWORDS = {
     "DeathtouchAbility",
     "DefenderAbility",
@@ -40,6 +41,51 @@ KNOWN_KEYWORDS = {
     "TrampleAbility",
     "VigilanceAbility",
     "WardAbility",
+    "KickerAbility",
+    "CyclingAbility",
+    "MorphAbility",
+    "FlashbackAbility",
+    "CrewAbility",
+    "SagaAbility",
+    "LandfallAbility",
+}
+
+MAGE_CONSTRUCT_PATTERNS = [
+    re.compile(pattern)
+    for pattern in (
+        r"ActivatedAbility",
+        r"TriggeredAbility",
+        r"StaticAbility",
+        r"ManaAbility",
+        r"SpellAbility",
+        r"EntersBattlefield",
+        r"BeginningOf",
+        r"AtTheBegin",
+        r"Dies",
+        r"Deals",
+        r"Attacks",
+        r"Blocks",
+        r"Cast",
+        r"GainAbility",
+    )
+]
+
+EXPECTED_COLUMNS = {
+    "name",
+    "set_code",
+    "collector_number",
+    "rarity",
+    "card_class",
+    "mana_cost",
+    "types",
+    "supertypes",
+    "subtypes",
+    "power",
+    "toughness",
+    "keywords",
+    "mana_parse_ok",
+    "types_parse_ok",
+    "source_path",
 }
 
 
@@ -147,6 +193,30 @@ def count_supported(records: Sequence[CardRecord]) -> int:
 
 
 def report_keywords(keyword_counts: Counter[str]) -> Dict[str, int]:
+    magic_total = 0
+    magic_unknown = 0
+    mage_constructs = 0
+    for keyword, count in keyword_counts.items():
+        category = classify_keyword(keyword)
+        if category == "magic":
+            magic_total += count
+        elif category == "unknown_magic":
+            magic_unknown += count
+        else:
+            mage_constructs += count
+    return {
+        "magic_keywords_recognized": magic_total,
+        "magic_keywords_unknown": magic_unknown,
+        "mage_constructs_total": mage_constructs,
+    }
+
+
+def keyword_top_unknown_magic(keyword_counts: Counter[str], limit: int = 50) -> List[Tuple[str, int]]:
+    unknown = [
+        (kw, count)
+        for kw, count in keyword_counts.items()
+        if classify_keyword(kw) == "unknown_magic"
+    ]
     recognized = sum(
         count for keyword, count in keyword_counts.items() if keyword in KNOWN_KEYWORDS
     )
@@ -165,6 +235,41 @@ def keyword_top_unknown(keyword_counts: Counter[str], limit: int = 50) -> List[T
     return unknown[:limit]
 
 
+def keyword_top_mage_constructs(keyword_counts: Counter[str], limit: int = 50) -> List[Tuple[str, int]]:
+    constructs = [
+        (kw, count)
+        for kw, count in keyword_counts.items()
+        if classify_keyword(kw) == "mage_construct"
+    ]
+    constructs.sort(key=lambda item: (-item[1], item[0]))
+    return constructs[:limit]
+
+
+def classify_keyword(keyword_class: str) -> str:
+    if keyword_class in MAGIC_KEYWORD_CLASSES:
+        return "magic"
+    for pattern in MAGE_CONSTRUCT_PATTERNS:
+        if pattern.search(keyword_class):
+            return "mage_construct"
+    if keyword_class.endswith("Ability"):
+        return "unknown_magic"
+    return "mage_construct"
+
+
+def write_catalog_report(
+    report_path: Path,
+    metrics: Dict[str, int],
+    keyword_counts: Counter[str],
+    set_counts: Optional[Dict[str, int]] = None,
+    top_sets: Optional[List[Tuple[str, int]]] = None,
+) -> None:
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    unknown_top = keyword_top_unknown_magic(keyword_counts)
+    mage_constructs_top = keyword_top_mage_constructs(keyword_counts)
+    lines = [
+        "# MAGE Catalog Report (Phase B1)",
+        "",
+        "## Parse/Schema Stats",
 def write_catalog_report(report_path: Path, metrics: Dict[str, int], keyword_counts: Counter[str]) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
     unknown_top = keyword_top_unknown(keyword_counts)
@@ -177,6 +282,173 @@ def write_catalog_report(report_path: Path, metrics: Dict[str, int], keyword_cou
         f"- Mana parse fail: {metrics['mana_parse_fail']}",
         f"- Types parse ok: {metrics['types_parse_ok']}",
         f"- Types parse fail: {metrics['types_parse_fail']}",
+        f"- Fully supported: {metrics['supported_cards']}",
+        f"- Stub required: {metrics['stub_required']}",
+        f"- Magic keywords recognized: {metrics['magic_keywords_recognized']}",
+        f"- Magic keywords unknown: {metrics['magic_keywords_unknown']}",
+        f"- MAGE constructs seen: {metrics['mage_constructs_total']}",
+    ]
+    if set_counts:
+        lines.append(f"- Total sets: {set_counts['sets_total']}")
+    lines.extend(
+        [
+            "",
+            "## Magic Keywords",
+            "",
+        ]
+    )
+    if unknown_top:
+        lines.append("### Top 50 Unknown Magic Keywords")
+        lines.append("")
+    for keyword, count in unknown_top:
+        lines.append(f"- {keyword}: {count}")
+    lines.extend(
+        [
+            "",
+            "## MAGE Ability/Effect Types",
+            "",
+        ]
+    )
+    for keyword, count in mage_constructs_top:
+        lines.append(f"- {keyword}: {count}")
+    if top_sets:
+        lines.extend(["", "## Top Sets by Volume", ""])
+        for set_code, count in top_sets:
+            lines.append(f"- {set_code}: {count}")
+    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def load_metrics_from_sqlite(path: Path) -> tuple[Dict[str, int], Counter[str], Dict[str, int]]:
+    conn = sqlite3.connect(path)
+    try:
+        total_cards = conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+        mana_ok = conn.execute("SELECT COUNT(*) FROM cards WHERE mana_parse_ok = 1").fetchone()[0]
+        types_ok = conn.execute("SELECT COUNT(*) FROM cards WHERE types_parse_ok = 1").fetchone()[0]
+        keyword_counts = Counter()
+        for (keywords_json,) in conn.execute("SELECT keywords FROM cards"):
+            if not keywords_json:
+                continue
+            for keyword in json.loads(keywords_json):
+                keyword_counts[keyword] += 1
+        supported = 0
+        for (name,) in conn.execute("SELECT name FROM cards"):
+            try:
+                get_definition(name)
+            except KeyError:
+                continue
+            supported += 1
+        metrics = {
+            "total_cards": total_cards,
+            "mana_parse_ok": mana_ok,
+            "mana_parse_fail": total_cards - mana_ok,
+            "types_parse_ok": types_ok,
+            "types_parse_fail": total_cards - types_ok,
+            "supported_cards": supported,
+            "stub_required": total_cards - supported,
+        }
+        metrics.update(report_keywords(keyword_counts))
+        set_counts = {
+            "sets_total": conn.execute("SELECT COUNT(DISTINCT set_code) FROM cards").fetchone()[0],
+        }
+        return metrics, keyword_counts, set_counts
+    finally:
+        conn.close()
+
+
+def load_top_sets(path: Path, limit: int = 10) -> List[Tuple[str, int]]:
+    conn = sqlite3.connect(path)
+    try:
+        rows = conn.execute(
+            "SELECT set_code, COUNT(*) FROM cards GROUP BY set_code ORDER BY COUNT(*) DESC, set_code ASC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [(row[0], row[1]) for row in rows]
+    finally:
+        conn.close()
+
+
+def write_catalog_report_json(
+    report_path: Path,
+    metrics: Dict[str, int],
+    keyword_counts: Counter[str],
+    set_counts: Optional[Dict[str, int]] = None,
+    top_sets: Optional[List[Tuple[str, int]]] = None,
+) -> None:
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    data = {
+        "metrics": metrics,
+        "magic_keywords_unknown_top": keyword_top_unknown_magic(keyword_counts),
+        "mage_constructs_top": keyword_top_mage_constructs(keyword_counts),
+        "set_counts": set_counts or {},
+        "top_sets": top_sets or [],
+    }
+    report_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def validate_catalog(path: Path, strict: bool = False, report_path: Optional[Path] = None) -> tuple[bool, List[str]]:
+    messages: List[str] = []
+    if not path.exists():
+        return False, [f"Catalog not found: {path}"]
+    conn = sqlite3.connect(path)
+    try:
+        tables = {
+            row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        if "cards" not in tables:
+            return False, ["Missing cards table"]
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(cards)")}
+        missing = EXPECTED_COLUMNS - columns
+        if missing:
+            return False, [f"Missing columns: {sorted(missing)}"]
+        total = conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+        if total <= 0:
+            messages.append("Catalog is empty")
+        nulls = conn.execute(
+            "SELECT COUNT(*) FROM cards WHERE name IS NULL OR set_code IS NULL OR collector_number IS NULL"
+        ).fetchone()[0]
+        if nulls:
+            messages.append(f"{nulls} cards missing required fields")
+        metrics, keyword_counts, _ = load_metrics_from_sqlite(path)
+        messages.append(f"Total cards: {metrics['total_cards']}")
+        messages.append(f"Mana parse ok: {metrics['mana_parse_ok']}")
+        messages.append(f"Types parse ok: {metrics['types_parse_ok']}")
+        mismatches = False
+        if report_path and report_path.exists():
+            report_metrics = parse_report_metrics(report_path)
+            if report_metrics:
+                for key, value in report_metrics.items():
+                    if key in metrics and metrics[key] != value:
+                        messages.append(f"Report mismatch for {key}: {value} vs {metrics[key]}")
+                        mismatches = True
+        if strict:
+            if total <= 0 or nulls or mismatches:
+                return False, messages
+    finally:
+        conn.close()
+    return True, messages
+
+
+def parse_report_metrics(report_path: Path) -> Dict[str, int]:
+    data = report_path.read_text(encoding="utf-8")
+    metrics: Dict[str, int] = {}
+    for line in data.splitlines():
+        if line.startswith("- Total cards:"):
+            metrics["total_cards"] = int(line.split(":")[1].strip())
+        if line.startswith("- Mana parse ok:"):
+            metrics["mana_parse_ok"] = int(line.split(":")[1].strip())
+        if line.startswith("- Mana parse fail:"):
+            metrics["mana_parse_fail"] = int(line.split(":")[1].strip())
+        if line.startswith("- Types parse ok:"):
+            metrics["types_parse_ok"] = int(line.split(":")[1].strip())
+        if line.startswith("- Types parse fail:"):
+            metrics["types_parse_fail"] = int(line.split(":")[1].strip())
+        if line.startswith("- Fully supported:"):
+            metrics["supported_cards"] = int(line.split(":")[1].strip())
+        if line.startswith("- Stub required:"):
+            metrics["stub_required"] = int(line.split(":")[1].strip())
+    return metrics
+
+
         f"- Keywords recognized: {metrics['keywords_recognized']}",
         f"- Keywords unknown: {metrics['keywords_unknown']}",
         f"- Fully supported: {metrics['supported_cards']}",
