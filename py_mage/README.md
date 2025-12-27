@@ -46,3 +46,9 @@ Optional coverage tooling:
 ```bash
 pip install pytest-cov
 ```
+
+## MAGE catalog import (Phase B1)
+
+```bash
+python -m py_mage cards import-mage --out py_mage/data/mage_catalog.sqlite
+```
