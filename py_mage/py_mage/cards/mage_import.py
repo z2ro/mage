@@ -48,7 +48,7 @@ MAGIC_KEYWORD_CLASSES = {
     "CrewAbility",
     "SagaAbility",
     "LandfallAbility",
-}
+}  # end MAGIC_KEYWORD_CLASSES
 
 MAGE_CONSTRUCT_PATTERNS = [
     re.compile(pattern)
