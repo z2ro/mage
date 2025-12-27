@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from py_mage.cards.mage_import import (
+    import_mage_cards,
+    load_metrics_from_sqlite,
+    load_top_sets,
+    validate_catalog,
+    write_catalog_report,
+    write_catalog_report_json,
+)
+from py_mage.validation.runner import dump_state, run_script, run_smoke
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="py_mage")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    validate = subparsers.add_parser("validate", help="Validation harness")
+    validate_sub = validate.add_subparsers(dest="validate_cmd", required=True)
+
+    smoke = validate_sub.add_parser("smoke", help="Run deterministic smoke scenario")
+    smoke.add_argument("--seed", type=int, required=True)
+    smoke.add_argument("--assert-invariants", action="store_true")
+
+    dump_state_cmd = validate_sub.add_parser("dump-state", help="Dump state to JSON")
+    dump_state_cmd.add_argument("--out", type=Path, required=True)
+    dump_state_cmd.add_argument("--seed", type=int, default=123)
+    dump_state_cmd.add_argument("--assert-invariants", action="store_true")
+
+    replay = validate_sub.add_parser("replay", help="Replay an action script")
+    replay.add_argument("input", type=Path)
+    replay.add_argument("--out", type=Path, required=True)
+    replay.add_argument("--log", type=Path, required=True)
+    replay.add_argument("--assert-invariants", action="store_true")
+
+    cards = subparsers.add_parser("cards", help="Card catalog tools")
+    cards_sub = cards.add_subparsers(dest="cards_cmd", required=True)
+    import_cmd = cards_sub.add_parser("import-mage", help="Import MAGE card catalog")
+    import_cmd.add_argument("--out", type=Path, required=True)
+    import_cmd.add_argument(
+        "--report",
+        type=Path,
+        default=Path("py_mage/docs/CATALOG_REPORT.md"),
+    )
+    import_cmd.add_argument(
+        "--mage-root",
+        type=Path,
+        default=Path.cwd(),
+        help="Path to the MAGE repository root",
+    )
+
+    validate_cmd = cards_sub.add_parser("validate", help="Validate a catalog")
+    validate_cmd.add_argument("--in", dest="catalog_path", type=Path, required=True)
+    validate_cmd.add_argument("--strict", action="store_true")
+    validate_cmd.add_argument(
+        "--report",
+        type=Path,
+        default=Path("py_mage/docs/CATALOG_REPORT.md"),
+    )
+
+    report_cmd = cards_sub.add_parser("report", help="Generate a catalog report")
+    report_cmd.add_argument("--in", dest="catalog_path", type=Path, required=True)
+    report_cmd.add_argument("--out", type=Path, required=True)
+    report_cmd.add_argument("--format", choices=["md", "json"], default="md")
+
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+
+    if args.command == "validate" and args.validate_cmd == "smoke":
+        state, log = run_smoke(seed=args.seed, assert_invariants=args.assert_invariants)
+        print("\n".join(log))
+        return
+    if args.command == "validate" and args.validate_cmd == "dump-state":
+        state, _ = run_smoke(seed=args.seed, assert_invariants=args.assert_invariants)
+        dump_state(state, args.out)
+        return
+    if args.command == "validate" and args.validate_cmd == "replay":
+        state, log = run_script(args.input, assert_invariants=args.assert_invariants)
+        dump_state(state, args.out)
+        args.log.write_text("\n".join(log) + "\n", encoding="utf-8")
+        return
+    if args.command == "cards" and args.cards_cmd == "import-mage":
+        metrics, keyword_counts = import_mage_cards(args.mage_root, args.out)
+        top_sets = load_top_sets(args.out, limit=10)
+        set_counts = load_metrics_from_sqlite(args.out)[2]
+        write_catalog_report(args.report, metrics, keyword_counts, set_counts, top_sets)
+        print(f"Wrote catalog to {args.out}")
+        print(f"Wrote report to {args.report}")
+        return
+    if args.command == "cards" and args.cards_cmd == "validate":
+        ok, messages = validate_catalog(
+            args.catalog_path, strict=args.strict, report_path=args.report
+        )
+        for message in messages:
+            print(message)
+        if not ok and args.strict:
+            raise SystemExit(1)
+        return
+    if args.command == "cards" and args.cards_cmd == "report":
+        metrics, keyword_counts, set_counts = load_metrics_from_sqlite(args.catalog_path)
+        top_sets = load_top_sets(args.catalog_path, limit=10)
+        if args.format == "json":
+            write_catalog_report_json(args.out, metrics, keyword_counts, set_counts, top_sets)
+        else:
+            write_catalog_report(args.out, metrics, keyword_counts, set_counts, top_sets)
+        print(f"Wrote report to {args.out}")
+        return
+    parser.print_help()
